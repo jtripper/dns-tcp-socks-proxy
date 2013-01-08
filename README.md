@@ -2,6 +2,8 @@
 
 A simple dns proxy to tunnel DNS requests over a socks proxy (for example, over ssh or Tor). This can come in handy when setting up transparent proxies, set this as a DNS server in /etc/resolv.conf.
 
+It chooses a random DNS server for each request, these can be changed in the source code.
+
 ## Usage
 
 Usage: ./dns-proxy [options]
