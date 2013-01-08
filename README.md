@@ -31,3 +31,4 @@ Any non-specified options will be set to their defaults:
 ### Credits
 
 (c) jtRIPper 2012
+http://blackhatlibrary.net/
