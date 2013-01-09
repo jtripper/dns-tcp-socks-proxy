@@ -165,7 +165,7 @@ int udp_listener() {
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
 
     // fork so we can keep receiving requests
-    // if (fork() != 0) { continue; }
+    if (fork() != 0) { continue; }
 
     // the tcp query requires the length to precede the packet, so we put the length there
     query = malloc(len + 3);
@@ -217,8 +217,8 @@ int main(int argc, char *argv[]) {
   }
 
   // daemonize the process.
-  // if(fork() != 0) { return; }
-  // if(fork() != 0) { return; }
+  if(fork() != 0) { return; }
+  if(fork() != 0) { return; }
 
   srand(time(NULL));
 
