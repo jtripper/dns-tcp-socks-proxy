@@ -25,28 +25,22 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <regex.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 
 int   SOCKS_PORT  = 9999;
 char *SOCKS_ADDR  = { "127.0.0.1" };
 int   LISTEN_PORT = 53;
 char *LISTEN_ADDR = { "0.0.0.0" };
 
-#define NUM_DNS 64
-char *dns_servers[] = { 
-     "8.8.8.8",        "8.8.4.4",        "156.154.70.1",   "156.154.71.1",   "208.67.222.222",
-     "208.67.220.220", "198.153.192.1",  "198.153.194.1",  "4.2.2.1",        "4.2.2.2",
-     "4.2.2.3",        "4.2.2.4",        "4.2.2.5",        "4.2.2.6",        "67.138.54.100",
-     "85.88.19.10",    "85.88.19.11",    "87.118.100.175", "94.75.228.28",   "62.141.58.13",
-     "85.25.251.254",  "85.214.73.63",   "212.82.225.7",   "212.82.226.212", "213.73.91.35",
-     "58.6.115.42",    "58.6.115.43",    "119.31.230.42",  "200.252.98.162", "217.79.186.148",
-     "82.229.244.191", "216.87.84.211",  "66.244.95.20",   "204.152.184.76", "194.150.168.168",
-     "80.237.196.2",   "194.95.202.198", "88.198.130.211", "78.46.89.147",   "129.206.100.126",
-     "79.99.234.56",   "208.67.220.220", "208.67.222.222", "156.154.70.22",  "156.154.71.22",
-     "85.25.149.144",  "87.106.37.196",  "8.8.8.8",        "8.8.4.4",        "88.198.24.111",
-     "207.225.209.66", "94.75.228.29",   "87.118.104.203", "87.118.109.2",   "202.83.95.227",
-     "27.110.120.30",  "89.16.173.11",   "69.164.208.50",  "64.0.55.201",    "72.14.189.120",
-     "109.69.8.51",    "8.26.56.26",     "8.20.247.20",    "69.164.196.21"
-};
+
+FILE *LOG_FILE;
+char *USERNAME = "nobody";
+char *GROUPNAME = "nobody";
+int NUM_DNS = 0;
+char **dns_servers;
 
 typedef struct {
   char *buffer;
@@ -70,6 +64,15 @@ char *get_value(char *line) {
   return token;
 }
 
+char *string_value(char *value) {
+  char *tmp = (char*)malloc(strlen(value));
+  strcpy(tmp, value);
+  value = tmp;
+  if (value[strlen(value)-1] == '\n')
+    value[strlen(value)-1] = '\0';
+  return value;
+}
+
 void parse_config(char *file) {
   char line[80], *tmp;
 
@@ -81,24 +84,48 @@ void parse_config(char *file) {
     if (line[0] == '#')
       continue;
 
-    if(strstr(line, "socks_port") != NULL) {
+    if(strstr(line, "socks_port") != NULL) 
       SOCKS_PORT = strtol(get_value(line), NULL, 10);
-    }
-    else if(strstr(line, "socks_addr") != NULL) {
-      SOCKS_ADDR = get_value(line);
-      tmp = (char*)malloc(strlen(SOCKS_ADDR));
-      strcpy(tmp, SOCKS_ADDR);
-      SOCKS_ADDR = tmp;
-    }
-    else if(strstr(line, "listen_addr") != NULL) {
-      LISTEN_ADDR = get_value(line);
-      tmp = (char*)malloc(strlen(LISTEN_ADDR));
-      strcpy(tmp, LISTEN_ADDR);
-      LISTEN_ADDR = tmp;
-    }
-    if(strstr(line, "listen_port") != NULL) {
+    else if(strstr(line, "socks_addr") != NULL)
+      SOCKS_ADDR = string_value(get_value(line));
+    else if(strstr(line, "listen_addr") != NULL)
+      LISTEN_ADDR = string_value(get_value(line));
+    else if(strstr(line, "listen_port") != NULL)
       LISTEN_PORT = strtol(get_value(line), NULL, 10);
-    }
+    else if(strstr(line, "set_user") != NULL)
+      USERNAME = string_value(get_value(line));
+    else if(strstr(line, "set_group") != NULL)
+      GROUPNAME = string_value(get_value(line));
+  }
+}
+
+void parse_resolv_conf() {
+  char ns[80];
+  int i = 0;
+  regex_t preg;
+  regmatch_t pmatch[1];
+  regcomp(&preg, "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\n$", REG_EXTENDED);
+
+  FILE *f = fopen("resolv.conf", "r");
+  if (!f)
+    error("Error opening resolv.conf");
+
+  while (fgets(ns, 80, f) != NULL) {
+    if (!regexec(&preg, ns, 1, pmatch, 0))
+      NUM_DNS++;
+  }
+
+  fclose(f);
+
+  dns_servers = malloc(sizeof(char*) * NUM_DNS);
+
+  f = fopen("resolv.conf", "r");
+  while (fgets(ns, 80, f) != NULL) {
+    if (regexec(&preg, ns, 1, pmatch, 0) != 0)
+      continue;
+    dns_servers[i] = (char*)malloc(strlen(ns) + 1);
+    strcpy(dns_servers[i], ns);
+    i++;
   }
 }
 
@@ -123,11 +150,15 @@ void tcp_query(void *query, response *buffer, int len) {
   send(sock, "\x05\x01\x00", 3, 0);
   recv(sock, tmp, 1024, 0);
 
+  srand(time(NULL));
+
   // select random dns server
   in_addr_t remote_dns = inet_addr(dns_servers[rand() % (NUM_DNS - 1)]);
   memcpy(tmp, "\x05\x01\x00\x01", 4);
   memcpy(tmp + 4, &remote_dns, 4);
   memcpy(tmp + 8, "\x00\x35", 2);
+
+  fprintf(LOG_FILE, "Using DNS server: %s\n", inet_ntoa(*(struct in_addr *)&remote_dns));
   send(sock, tmp, 10, 0);
 
   recv(sock, tmp, 1024, 0);
@@ -158,6 +189,9 @@ int udp_listener() {
   if(bind(sock, (struct sockaddr*)&dns_listener, sizeof(dns_listener)) < 0)
     error("Error binding on dns proxy");
 
+  LOG_FILE = fopen(".dns_proxy.log", "a+");
+  setuid(getpwnam(USERNAME)->pw_uid);
+  setgid(getgrnam(GROUPNAME)->gr_gid);
   socklen_t dns_client_size = sizeof(struct sockaddr_in);
 
   while(1) {
@@ -201,7 +235,9 @@ int main(int argc, char *argv[]) {
       printf("   * socks_addr  -- socks listener address\n");
       printf("   * socks_port  -- socks listener port\n");
       printf("   * listen_addr -- address for the dns proxy to listen on\n");
-      printf("   * listen_port -- port for the dns proxy to listen on (most cases 53)\n\n");
+      printf("   * listen_port -- port for the dns proxy to listen on (most cases 53)\n");
+      printf("   * set_user    -- username to drop to after binding\n");
+      printf("   * set_group   -- group to drop to after binding\n\n");
       printf(" * Configuration directives should be of the format:\n");
       printf("   option = value\n\n");
       printf(" * Any non-specified options will be set to their defaults:\n");
@@ -209,6 +245,8 @@ int main(int argc, char *argv[]) {
       printf("   * socks_port = 9999\n");
       printf("   * listen_addr = 0.0.0.0\n");
       printf("   * listen_port = 53\n");
+      printf("   * set_user = nobody\n");
+      printf("   * set_group = nobody\n");
       exit(0);
     }
     else {
@@ -216,11 +254,21 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (getuid() != 0) {
+    printf("Error: this program must be run as root! Quitting\n");
+    exit(1);
+  }
+
+  printf("[*] Listening on: %s:%d\n", LISTEN_ADDR, LISTEN_PORT);
+  printf("[*] Using SOCKS proxy: %s:%d\n", SOCKS_ADDR, SOCKS_PORT);
+  printf("[*] Will drop priviledges to %s:%s\n", USERNAME, GROUPNAME);
+  parse_resolv_conf();
+  printf("[*] Loaded %d DNS servers from resolv.conf.\n", NUM_DNS);
+  printf("[*] Backgrounding process.\n");
+
   // daemonize the process.
   if(fork() != 0) { return; }
   if(fork() != 0) { return; }
-
-  srand(time(NULL));
 
   // start the dns proxy
   udp_listener();

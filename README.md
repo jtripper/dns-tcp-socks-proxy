@@ -2,7 +2,9 @@
 
 A simple dns proxy to tunnel DNS requests over a socks proxy (for example, over ssh or Tor). This can come in handy when setting up transparent proxies, set this as a DNS server in /etc/resolv.conf.
 
-It chooses a random DNS server for each request, these can be changed in the source code.
+It chooses a random DNS server for each request from the file "resolv.conf" which is a newline delimited list of DNS servers. 
+
+The daemon must be run as root in order for it to bind to port 53.
 
 ## Usage
 
@@ -22,6 +24,8 @@ The configuration file should contain any of the following options (and ignores 
 * socks_port  -- socks listener port
 * listen_addr -- address for the dns proxy to listen on
 * listen_port -- port for the dns proxy to listen on (most cases 53)
+* set_user    -- username to drop to after binding
+* set_group   -- group to drop to after binding
 
 Any non-specified options will be set to their defaults:
 
@@ -29,6 +33,8 @@ Any non-specified options will be set to their defaults:
 * socks_port = 9999
 * listen_addr = 0.0.0.0
 * listen_port = 53
+* set_user = nobody
+* set_group = nobody
 
 ### Credits
 
