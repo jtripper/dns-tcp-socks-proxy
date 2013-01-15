@@ -30,6 +30,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 int   SOCKS_PORT  = 9050;
 char *SOCKS_ADDR  = { "127.0.0.1" };
