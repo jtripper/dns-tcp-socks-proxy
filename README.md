@@ -12,7 +12,7 @@ Usage: ./dns-proxy [options]
 
 With no parameters, the configuration file is read from 'dns.conf'.
 
-* -n          -- No configuration file (socks: 127.0.0.1:9999, listener: 0.0.0.0:53).
+* -n          -- No configuration file (socks: 127.0.0.1:9050, listener: 0.0.0.0:53).
 * -h          -- Print this message and exit.
 * config_file -- Read from specified configuration file.\n
 
@@ -30,7 +30,7 @@ The configuration file should contain any of the following options (and ignores 
 Any non-specified options will be set to their defaults:
 
 * socks_addr = 127.0.0.1
-* socks_port = 9999
+* socks_port = 9050
 * listen_addr = 0.0.0.0
 * listen_port = 53
 * set_user = nobody

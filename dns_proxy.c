@@ -29,8 +29,9 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+#include <signal.h>
 
-int   SOCKS_PORT  = 9999;
+int   SOCKS_PORT  = 9050;
 char *SOCKS_ADDR  = { "127.0.0.1" };
 int   LISTEN_PORT = 53;
 char *LISTEN_ADDR = { "0.0.0.0" };
@@ -129,6 +130,11 @@ void parse_resolv_conf() {
   }
 }
 
+// handle children
+void reaper_handle (int sig) {
+  while (waitpid(-1, NULL, WNOHANG) > 0) { };
+}
+
 void tcp_query(void *query, response *buffer, int len) {
   int sock;
   struct sockaddr_in socks_server;
@@ -194,6 +200,12 @@ int udp_listener() {
   setgid(getgrnam(GROUPNAME)->gr_gid);
   socklen_t dns_client_size = sizeof(struct sockaddr_in);
 
+  // setup SIGCHLD handler to kill off zombie children
+  struct sigaction reaper;
+  memset(&reaper, 0, sizeof(struct sigaction));
+  reaper.sa_handler = reaper_handle;
+  sigaction(SIGCHLD, &reaper, 0);
+
   while(1) {
     // receive a dns request from the client
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
@@ -242,7 +254,7 @@ int main(int argc, char *argv[]) {
       printf("   option = value\n\n");
       printf(" * Any non-specified options will be set to their defaults:\n");
       printf("   * socks_addr = 127.0.0.1\n");
-      printf("   * socks_port = 9999\n");
+      printf("   * socks_port = 9050\n");
       printf("   * listen_addr = 0.0.0.0\n");
       printf("   * listen_port = 53\n");
       printf("   * set_user = nobody\n");
