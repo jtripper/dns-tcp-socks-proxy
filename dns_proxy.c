@@ -80,7 +80,7 @@ void parse_config(char *file) {
 
   FILE *f = fopen(file, "r");
   if (!f)
-    error("Error opening configuration file");
+    error("[!] Error opening configuration file");
 
   while (fgets(line, 80, f) != NULL) {
     if (line[0] == '#')
@@ -110,7 +110,7 @@ void parse_resolv_conf() {
 
   FILE *f = fopen("resolv.conf", "r");
   if (!f)
-    error("Error opening resolv.conf");
+    error("[!] Error opening resolv.conf");
 
   while (fgets(ns, 80, f) != NULL) {
     if (!regexec(&preg, ns, 1, pmatch, 0))
@@ -148,10 +148,10 @@ void tcp_query(void *query, response *buffer, int len) {
 
   sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0) 
-    error("Error creating TCP socket");
+    error("[!] Error creating TCP socket");
 
   if (connect(sock, (struct sockaddr*)&socks_server, sizeof(socks_server)) < 0)
-    error("Error connecting to proxy");
+    error("[!] Error connecting to proxy");
   
   // socks handshake
   send(sock, "\x05\x01\x00", 3, 0);
@@ -191,12 +191,19 @@ int udp_listener() {
   // create our udp listener
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0)
-    error("Error setting up dns proxy");
+    error("[!] Error setting up dns proxy");
 
   if(bind(sock, (struct sockaddr*)&dns_listener, sizeof(dns_listener)) < 0)
-    error("Error binding on dns proxy");
+    error("[!] Error binding on dns proxy");
+
+  printf("[*] No errors, backgrounding process.\n");
+
+  // daemonize the process.
+  if(fork() != 0) { return; }
+  if(fork() != 0) { return; }
 
   LOG_FILE = fopen(".dns_proxy.log", "a+");
+
   setuid(getpwnam(USERNAME)->pw_uid);
   setgid(getgrnam(GROUPNAME)->gr_gid);
   socklen_t dns_client_size = sizeof(struct sockaddr_in);
@@ -276,12 +283,16 @@ int main(int argc, char *argv[]) {
   printf("[*] Using SOCKS proxy: %s:%d\n", SOCKS_ADDR, SOCKS_PORT);
   printf("[*] Will drop priviledges to %s:%s\n", USERNAME, GROUPNAME);
   parse_resolv_conf();
-  printf("[*] Loaded %d DNS servers from resolv.conf.\n", NUM_DNS);
-  printf("[*] Backgrounding process.\n");
+  printf("[*] Loaded %d DNS servers from resolv.conf.\n\n", NUM_DNS);
 
-  // daemonize the process.
-  if(fork() != 0) { return; }
-  if(fork() != 0) { return; }
+  if (!getpwnam(USERNAME)) {
+    printf("[!] Username (%s) does not exist! Quiting\n", USERNAME);
+    exit(1);
+  }
+  if (!getgrnam(GROUPNAME)) {
+    printf("[!] Group (%s) does not exist! Quiting\n", GROUPNAME);
+    exit(1);
+  }
 
   // start the dns proxy
   udp_listener();
