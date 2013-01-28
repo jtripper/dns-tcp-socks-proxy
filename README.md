@@ -10,7 +10,7 @@ The daemon must be run as root in order for it to bind to port 53.
 
 Usage: ./dns-proxy [options]
 
-With no parameters, the configuration file is read from 'dns.conf'.
+With no parameters, the configuration file is read from 'dns_proxy.conf'.
 
 * -n          -- No configuration file (socks: 127.0.0.1:9050, listener: 0.0.0.0:53).
 * -h          -- Print this message and exit.
@@ -37,6 +37,17 @@ Any non-specified options will be set to their defaults:
 * set_user    = nobody
 * set_group   = nobody
 * resolv_conf = resolv.conf
+
+### Installation
+
+On Arch linux, the dns proxy can be installed from the AUR at: https://aur.archlinux.org/packages/tcpdnsproxy/. The configuration file is in /etc/dns_proxy/dns_proxy.conf and the proxy can be started with:
+
+```
+systemctl start tcpdnsproxy
+```
+
+On other systems, clone the git repo  and run make.
+
 ### Credits
 
 (c) jtRIPper 2012
