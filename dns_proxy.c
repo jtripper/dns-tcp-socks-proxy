@@ -201,8 +201,8 @@ int udp_listener() {
   printf("[*] No errors, backgrounding process.\n");
 
   // daemonize the process.
-  if(fork() != 0) { return; }
-  if(fork() != 0) { return; }
+  if(fork() != 0) { exit(0); }
+  if(fork() != 0) { exit(0); }
 
   LOG_FILE = fopen(".dns_proxy.log", "a+");
 
