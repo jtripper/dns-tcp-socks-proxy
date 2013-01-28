@@ -1,4 +1,4 @@
-# Maintainer: Your Name <youremail@domain.com>
+# Maintainer: Jack Tripper <jack@jtripper.net>
 pkgname=tcpdnsproxy
 pkgver=20130128
 pkgrel=1
