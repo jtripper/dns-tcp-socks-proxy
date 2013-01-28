@@ -38,17 +38,34 @@ Any non-specified options will be set to their defaults:
 * set_group   = nobody
 * resolv_conf = resolv.conf
 
-### Installation
+## Installation
 
-On Arch linux, the dns proxy can be installed from the AUR at: https://aur.archlinux.org/packages/tcpdnsproxy/. The configuration file is in /etc/dns_proxy/dns_proxy.conf and the proxy can be started with:
+On Arch linux, the dns proxy can be installed from the AUR at: https://aur.archlinux.org/packages/tcpdnsproxy/.
 
 ```
-systemctl start tcpdnsproxy
+wget https://aur.archlinux.org/packages/tc/tcpdnsproxy/PKGBUILD
+makepkg
+sudo pacman -U tcpdnsproxy-20130128-1-any.pkg.tar.xz
+
+# edit /etc/dns_proxy/dns_proxy.conf as necessary
+sudo systemctl start tcpdnsproxy
+
+# to autorun on put run:
+sudo systemctl enable tcpdnsproxy
 ```
 
-On other systems, clone the git repo  and run make.
+On other distributions:
 
-### Credits
+```
+git clone https://github.com/jtRIPper/dns-tcp-socks-proxy.git
+cd dns-tcp-socks-proxy
+make
+
+# edit dns_proxy.conf as necessary
+./dns_proxy
+```
+
+## Credits
 
 (c) jtRIPper 2012
 
