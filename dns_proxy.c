@@ -37,8 +37,8 @@ char *SOCKS_ADDR  = { "127.0.0.1" };
 int   LISTEN_PORT = 53;
 char *LISTEN_ADDR = { "0.0.0.0" };
 
-
 FILE *LOG_FILE;
+char *RESOLVCONF = "resolv.conf";
 char *USERNAME = "nobody";
 char *GROUPNAME = "nobody";
 int NUM_DNS = 0;
@@ -98,6 +98,8 @@ void parse_config(char *file) {
       USERNAME = string_value(get_value(line));
     else if(strstr(line, "set_group") != NULL)
       GROUPNAME = string_value(get_value(line));
+    else if(strstr(line, "resolv_conf") != NULL)
+			RESOLVCONF = string_value(get_value(line));
   }
 }
 
@@ -108,7 +110,7 @@ void parse_resolv_conf() {
   regmatch_t pmatch[1];
   regcomp(&preg, "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\n$", REG_EXTENDED);
 
-  FILE *f = fopen("resolv.conf", "r");
+  FILE *f = fopen(RESOLVCONF, "r");
   if (!f)
     error("[!] Error opening resolv.conf");
 
@@ -121,7 +123,7 @@ void parse_resolv_conf() {
 
   dns_servers = malloc(sizeof(char*) * NUM_DNS);
 
-  f = fopen("resolv.conf", "r");
+  f = fopen(RESOLVCONF, "r");
   while (fgets(ns, 80, f) != NULL) {
     if (regexec(&preg, ns, 1, pmatch, 0) != 0)
       continue;
@@ -243,11 +245,11 @@ int udp_listener() {
 
 int main(int argc, char *argv[]) {
   if (argc == 1)
-    parse_config("dns.conf");
+    parse_config("dns_proxy.conf");
   else if (argc == 2) {
     if (!strcmp(argv[1], "-h")) {
       printf("Usage: %s [options]\n", argv[0]);
-      printf(" * With no parameters, the configuration file is read from 'dns.conf'.\n\n");
+      printf(" * With no parameters, the configuration file is read from 'dns_proxy.conf'.\n\n");
       printf(" -n          -- No configuration file (socks: 127.0.0.1:9999, listener: 0.0.0.0:53).\n");
       printf(" -h          -- Print this message and exit.\n");
       printf(" config_file -- Read from specified configuration file.\n\n");
@@ -257,16 +259,18 @@ int main(int argc, char *argv[]) {
       printf("   * listen_addr -- address for the dns proxy to listen on\n");
       printf("   * listen_port -- port for the dns proxy to listen on (most cases 53)\n");
       printf("   * set_user    -- username to drop to after binding\n");
-      printf("   * set_group   -- group to drop to after binding\n\n");
+      printf("   * set_group   -- group to drop to after binding\n");
+      printf("   * resolv_conf -- location of resolv.conf to read from\n\n");
       printf(" * Configuration directives should be of the format:\n");
       printf("   option = value\n\n");
       printf(" * Any non-specified options will be set to their defaults:\n");
-      printf("   * socks_addr = 127.0.0.1\n");
-      printf("   * socks_port = 9050\n");
-      printf("   * listen_addr = 0.0.0.0\n");
-      printf("   * listen_port = 53\n");
-      printf("   * set_user = nobody\n");
-      printf("   * set_group = nobody\n");
+      printf("   * socks_addr   = 127.0.0.1\n");
+      printf("   * socks_port   = 9050\n");
+      printf("   * listen_addr  = 0.0.0.0\n");
+      printf("   * listen_port  = 53\n");
+      printf("   * set_user     = nobody\n");
+      printf("   * set_group    = nobody\n");
+			printf("   * resolv_conf  = resolv.conf\n");
       exit(0);
     }
     else {
@@ -283,7 +287,7 @@ int main(int argc, char *argv[]) {
   printf("[*] Using SOCKS proxy: %s:%d\n", SOCKS_ADDR, SOCKS_PORT);
   printf("[*] Will drop priviledges to %s:%s\n", USERNAME, GROUPNAME);
   parse_resolv_conf();
-  printf("[*] Loaded %d DNS servers from resolv.conf.\n\n", NUM_DNS);
+  printf("[*] Loaded %d DNS servers from %s.\n\n", NUM_DNS, RESOLVCONF);
 
   if (!getpwnam(USERNAME)) {
     printf("[!] Username (%s) does not exist! Quiting\n", USERNAME);
