@@ -198,6 +198,14 @@ int udp_listener() {
   if(bind(sock, (struct sockaddr*)&dns_listener, sizeof(dns_listener)) < 0)
     error("[!] Error binding on dns proxy");
 
+  FILE *resolv = fopen("/etc/resolv.conf", "w");
+
+  if (!resolv)
+	  error("[!] Error opening /etc/resolv.conf");
+
+	fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
+  fclose(resolv);
+
   printf("[*] No errors, backgrounding process.\n");
 
   // daemonize the process.
