@@ -39,6 +39,7 @@ char *LISTEN_ADDR = { "0.0.0.0" };
 
 FILE *LOG_FILE;
 char *RESOLVCONF = "resolv.conf";
+char *LOGFILE = "/dev/null";
 char *USERNAME = "nobody";
 char *GROUPNAME = "nobody";
 int NUM_DNS = 0;
@@ -100,6 +101,8 @@ void parse_config(char *file) {
       GROUPNAME = string_value(get_value(line));
     else if(strstr(line, "resolv_conf") != NULL)
 			RESOLVCONF = string_value(get_value(line));
+    else if(strstr(line, "log_file") != NULL)
+			LOGFILE = string_value(get_value(line));
   }
 }
 
@@ -206,13 +209,15 @@ int udp_listener() {
 	fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
   fclose(resolv);
 
+  LOG_FILE = fopen(LOGFILE, "a+");
+  if (!LOG_FILE)
+		error("[!] Error opening logfile.");
+
   printf("[*] No errors, backgrounding process.\n");
 
   // daemonize the process.
   if(fork() != 0) { exit(0); }
   if(fork() != 0) { exit(0); }
-
-  LOG_FILE = fopen(".dns_proxy.log", "a+");
 
   setuid(getpwnam(USERNAME)->pw_uid);
   setgid(getgrnam(GROUPNAME)->gr_gid);
@@ -268,7 +273,8 @@ int main(int argc, char *argv[]) {
       printf("   * listen_port -- port for the dns proxy to listen on (most cases 53)\n");
       printf("   * set_user    -- username to drop to after binding\n");
       printf("   * set_group   -- group to drop to after binding\n");
-      printf("   * resolv_conf -- location of resolv.conf to read from\n\n");
+      printf("   * resolv_conf -- location of resolv.conf to read from\n");
+			printf("   * log_file    -- location to log server IPs to. (only necessary for debugging)\n\n");
       printf(" * Configuration directives should be of the format:\n");
       printf("   option = value\n\n");
       printf(" * Any non-specified options will be set to their defaults:\n");
@@ -279,6 +285,7 @@ int main(int argc, char *argv[]) {
       printf("   * set_user     = nobody\n");
       printf("   * set_group    = nobody\n");
 			printf("   * resolv_conf  = resolv.conf\n");
+			printf("   * log_file     = /dev/null\n");
       exit(0);
     }
     else {
