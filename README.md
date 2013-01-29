@@ -27,6 +27,7 @@ The configuration file should contain any of the following options (and ignores 
 * set_user    -- username to drop to after binding
 * set_group   -- group to drop to after binding
 * resolv_conf -- location of resolv.conf file to read from
+* log_file    -- location to log to (should be /dev/null unless debugging).
 
 Any non-specified options will be set to their defaults:
 
@@ -37,6 +38,7 @@ Any non-specified options will be set to their defaults:
 * set_user    = nobody
 * set_group   = nobody
 * resolv_conf = resolv.conf
+* log_file    = /dev/null
 
 ## Installation
 
