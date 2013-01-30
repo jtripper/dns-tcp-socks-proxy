@@ -12,22 +12,22 @@ _gitroot="git://github.com/jtRIPper/dns-tcp-socks-proxy.git"
 _gitname="dns-tcp-socks-proxy"
 
 build() {
-	cd "$srcdir"
-	if [ -d $_gitname ] ; then
+  cd "$srcdir"
+  if [ -d $_gitname ] ; then
     cd $_gitname && git pull origin
     msg "The local files are updated."
   else
     git clone $_gitroot $_gitname
-	fi			
+  fi			
 
-	cd "$srcdir/$_gitname"
-
+  cd "$srcdir/$_gitname"
   make
 }
 
 package() {
   cd "$srcdir/$_gitname"
   install -Dm755 dns_proxy "$pkgdir/usr/bin/dns_proxy"
+  sed -i 's#resolv\.conf#/etc/dns_proxy/resolv.conf#g' dns_proxy.conf
   install -Dm644 dns_proxy.conf "$pkgdir/etc/dns_proxy/dns_proxy.conf"
   install -Dm644 resolv.conf "$pkgdir/etc/dns_proxy/resolv.conf"
   install -Dm755 arch_files/tcpdnsproxy.service "$pkgdir/usr/lib/systemd/system/tcpdnsproxy.service"
