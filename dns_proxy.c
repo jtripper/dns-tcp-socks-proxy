@@ -43,6 +43,7 @@ char *LOGFILE = "/dev/null";
 char *USERNAME = "nobody";
 char *GROUPNAME = "nobody";
 int NUM_DNS = 0;
+int LOG = 0;
 char **dns_servers;
 
 typedef struct {
@@ -170,9 +171,9 @@ void tcp_query(void *query, response *buffer, int len) {
   memcpy(tmp + 4, &remote_dns, 4);
   memcpy(tmp + 8, "\x00\x35", 2);
 
-  fprintf(LOG_FILE, "Using DNS server: %s\n", inet_ntoa(*(struct in_addr *)&remote_dns));
-  send(sock, tmp, 10, 0);
+  if (LOG == 1) { fprintf(LOG_FILE, "Using DNS server: %s\n", inet_ntoa(*(struct in_addr *)&remote_dns)); }
 
+  send(sock, tmp, 10, 0);
   recv(sock, tmp, 1024, 0);
 
   // forward dns query
@@ -209,9 +210,12 @@ int udp_listener() {
   fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
   fclose(resolv);
 
-  LOG_FILE = fopen(LOGFILE, "a+");
-  if (!LOG_FILE)
-    error("[!] Error opening logfile.");
+  if (strcmp(LOGFILE, "/dev/null") != 0) {
+    LOG      = 1;
+    LOG_FILE = fopen(LOGFILE, "a+");
+    if (!LOG_FILE)
+      error("[!] Error opening logfile.");
+  }
 
   printf("[*] No errors, backgrounding process.\n");
 
