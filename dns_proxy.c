@@ -105,6 +105,8 @@ void parse_config(char *file) {
     else if(strstr(line, "log_file") != NULL)
       LOGFILE = string_value(get_value(line));
   }
+  if (fclose(f) != 0)
+	  error("[!] Error closing configuration file");
 }
 
 void parse_resolv_conf() {
@@ -123,8 +125,9 @@ void parse_resolv_conf() {
       NUM_DNS++;
   }
 
-  fclose(f);
-
+  if (fclose(f))
+    error("[!] Error closing resolv.conf");
+  
   dns_servers = malloc(sizeof(char*) * NUM_DNS);
 
   f = fopen(RESOLVCONF, "r");
@@ -135,6 +138,8 @@ void parse_resolv_conf() {
     strcpy(dns_servers[i], ns);
     i++;
   }
+  if (fclose(f))
+    error("[!] Error closing resolv.conf");
 }
 
 // handle children
