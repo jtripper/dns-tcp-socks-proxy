@@ -69,7 +69,7 @@ char *get_value(char *line) {
 }
 
 char *string_value(char *value) {
-  char *tmp = (char*)malloc(strlen(value));
+  char *tmp = (char*)malloc(strlen(value)+1);
   strcpy(tmp, value);
   value = tmp;
   if (value[strlen(value)-1] == '\n')
