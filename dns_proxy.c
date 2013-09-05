@@ -335,4 +335,5 @@ int main(int argc, char *argv[]) {
 
   // start the dns proxy
   udp_listener();
+  exit(EXIT_SUCCESS);
 }
