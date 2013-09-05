@@ -31,6 +31,8 @@
 #include <grp.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <errno.h>
 
 int   SOCKS_PORT  = 9050;
 char *SOCKS_ADDR  = { "127.0.0.1" };
@@ -241,6 +243,15 @@ int udp_listener() {
   while(1) {
     // receive a dns request from the client
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
+
+    // lets not fork if recvfrom was interrupted
+    if (len < 0 && errno == EINTR) { continue; }
+
+    // other invalid values from recvfrom
+    if (len < 0) {
+      if (LOG == 1) { fprintf(LOG_FILE, "recvfrom failed: %s\n", strerror(errno)); }
+      continue;
+    }
 
     // fork so we can keep receiving requests
     if (fork() != 0) { continue; }
