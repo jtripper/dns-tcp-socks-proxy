@@ -80,7 +80,7 @@ char *string_value(char *value) {
 }
 
 void parse_config(char *file) {
-  char line[80], *tmp;
+  char line[80];
 
   FILE *f = fopen(file, "r");
   if (!f)
