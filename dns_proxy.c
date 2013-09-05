@@ -31,6 +31,8 @@
 #include <grp.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <errno.h>
 
 int   SOCKS_PORT  = 9050;
 char *SOCKS_ADDR  = { "127.0.0.1" };
@@ -69,7 +71,7 @@ char *get_value(char *line) {
 }
 
 char *string_value(char *value) {
-  char *tmp = (char*)malloc(strlen(value));
+  char *tmp = (char*)malloc(strlen(value)+1);
   strcpy(tmp, value);
   value = tmp;
   if (value[strlen(value)-1] == '\n')
@@ -78,7 +80,7 @@ char *string_value(char *value) {
 }
 
 void parse_config(char *file) {
-  char line[80], *tmp;
+  char line[80];
 
   FILE *f = fopen(file, "r");
   if (!f)
@@ -105,6 +107,8 @@ void parse_config(char *file) {
     else if(strstr(line, "log_file") != NULL)
       LOGFILE = string_value(get_value(line));
   }
+  if (fclose(f) != 0)
+	  error("[!] Error closing configuration file");
 }
 
 void parse_resolv_conf() {
@@ -123,8 +127,9 @@ void parse_resolv_conf() {
       NUM_DNS++;
   }
 
-  fclose(f);
-
+  if (fclose(f))
+    error("[!] Error closing resolv.conf");
+  
   dns_servers = malloc(sizeof(char*) * NUM_DNS);
 
   f = fopen(RESOLVCONF, "r");
@@ -135,6 +140,8 @@ void parse_resolv_conf() {
     strcpy(dns_servers[i], ns);
     i++;
   }
+  if (fclose(f))
+    error("[!] Error closing resolv.conf");
 }
 
 // handle children
@@ -237,6 +244,15 @@ int udp_listener() {
     // receive a dns request from the client
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
 
+    // lets not fork if recvfrom was interrupted
+    if (len < 0 && errno == EINTR) { continue; }
+
+    // other invalid values from recvfrom
+    if (len < 0) {
+      if (LOG == 1) { fprintf(LOG_FILE, "recvfrom failed: %s\n", strerror(errno)); }
+      continue;
+    }
+
     // fork so we can keep receiving requests
     if (fork() != 0) { continue; }
 
@@ -319,4 +335,5 @@ int main(int argc, char *argv[]) {
 
   // start the dns proxy
   udp_listener();
+  exit(EXIT_SUCCESS);
 }
