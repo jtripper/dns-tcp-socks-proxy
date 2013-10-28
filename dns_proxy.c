@@ -1,6 +1,7 @@
 /*
  *  UDP-TCP SOCKS DNS Tunnel
  *  (C) 2012 jtRIPper
+ *  Copyright (c) 2013 Yuxuan Shui
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -160,14 +161,12 @@ void tcp_query_after_socks_respond(EV_P_ ev_io *w, int revent){
 	size_t len = recv(w->fd, q->res, 2048, 0);
 
 	// send the reply back to the client (minus the length at the beginning)
-	fprintf(LOG_FILE, "Send back\n");
 	sendto(q->res_fd, q->res + 2, len-2, 0, (struct sockaddr *)q->addr, sizeof(*q->addr));
 	ev_io_stop(EV_A, (ev_io *)q);
 	free(q);
 }
 
 void tcp_query_after_socks_connect(EV_P_ ev_io *w, int revent){
-	fprintf(LOG_FILE, "Connected\n");
 	struct tcp_query *q = (struct tcp_query *)w;
 	recv(w->fd, q->res, 1024, 0);
 
