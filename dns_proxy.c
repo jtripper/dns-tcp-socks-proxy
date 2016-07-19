@@ -181,7 +181,12 @@ void tcp_query(void *query, response *buffer, int len) {
   srand(time(NULL));
 
   // select random dns server
-  in_addr_t remote_dns = inet_addr(dns_servers[rand() % (NUM_DNS - 1)]);
+  in_addr_t remote_dns;
+  if (NUM_DNS == 1) {
+    remote_dns = inet_addr(dns_servers[0]);
+  } else {
+    remote_dns = inet_addr(dns_servers[rand() % (NUM_DNS - 1)]);
+  }
   memcpy(tmp, "\x05\x01\x00\x01", 4);
   memcpy(tmp + 4, &remote_dns, 4);
   memcpy(tmp + 8, "\x00\x35", 2);
@@ -232,6 +237,7 @@ int udp_listener() {
     LOG_FILE = fopen(LOGFILE, "a+");
     if (!LOG_FILE)
       error("[!] Error opening logfile.");
+    setvbuf(LOG_FILE, NULL, _IOLBF, 1024);
   }
 
   printf("[*] No errors, backgrounding process.\n");
@@ -250,9 +256,11 @@ int udp_listener() {
   reaper.sa_handler = reaper_handle;
   sigaction(SIGCHLD, &reaper, 0);
 
+  fprintf(LOG_FILE, "Starting up...\n");
   while(1) {
     // receive a dns request from the client
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
+
 
     // lets not fork if recvfrom was interrupted
     if (len < 0 && errno == EINTR) { continue; }
