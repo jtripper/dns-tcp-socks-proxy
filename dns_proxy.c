@@ -21,6 +21,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -46,6 +47,7 @@ char *USERNAME = "nobody";
 char *GROUPNAME = "nobody";
 int NUM_DNS = 0;
 int LOG = 0;
+int REWRITE_RESOLVCONF = 1;
 char **dns_servers;
 
 typedef struct {
@@ -102,7 +104,13 @@ void parse_config(char *file) {
       USERNAME = string_value(get_value(line));
     else if(strstr(line, "set_group") != NULL)
       GROUPNAME = string_value(get_value(line));
-    else if(strstr(line, "resolv_conf") != NULL)
+    else if(strstr(line, "rewrite_resolv_conf") != NULL) {
+      char *value = string_value(get_value(line));
+      for(int i = 0; value[i]; i++){
+        value[i] = tolower(value[i]);
+      }
+      REWRITE_RESOLVCONF = strcmp(value, "true") == 0;
+    } else if(strstr(line, "resolv_conf") != NULL)
       RESOLVCONF = string_value(get_value(line));
     else if(strstr(line, "log_file") != NULL)
       LOGFILE = string_value(get_value(line));
@@ -209,13 +217,15 @@ int udp_listener() {
   if(bind(sock, (struct sockaddr*)&dns_listener, sizeof(dns_listener)) < 0)
     error("[!] Error binding on dns proxy");
 
-  FILE *resolv = fopen("/etc/resolv.conf", "w");
+  if (REWRITE_RESOLVCONF) {
+    FILE *resolv = fopen("/etc/resolv.conf", "w");
 
-  if (!resolv)
-    error("[!] Error opening /etc/resolv.conf");
+    if (!resolv)
+      error("[!] Error opening /etc/resolv.conf");
 
-  fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
-  fclose(resolv);
+    fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
+    fclose(resolv);
+  }
 
   if (strcmp(LOGFILE, "/dev/null") != 0) {
     LOG      = 1;
