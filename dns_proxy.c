@@ -21,6 +21,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -46,6 +47,7 @@ char *USERNAME = "nobody";
 char *GROUPNAME = "nobody";
 int NUM_DNS = 0;
 int LOG = 0;
+int REWRITE_RESOLVCONF = 1;
 char **dns_servers;
 
 typedef struct {
@@ -102,7 +104,13 @@ void parse_config(char *file) {
       USERNAME = string_value(get_value(line));
     else if(strstr(line, "set_group") != NULL)
       GROUPNAME = string_value(get_value(line));
-    else if(strstr(line, "resolv_conf") != NULL)
+    else if(strstr(line, "rewrite_resolv_conf") != NULL) {
+      char *value = string_value(get_value(line));
+      for(int i = 0; value[i]; i++){
+        value[i] = tolower(value[i]);
+      }
+      REWRITE_RESOLVCONF = strcmp(value, "true") == 0;
+    } else if(strstr(line, "resolv_conf") != NULL)
       RESOLVCONF = string_value(get_value(line));
     else if(strstr(line, "log_file") != NULL)
       LOGFILE = string_value(get_value(line));
@@ -173,7 +181,12 @@ void tcp_query(void *query, response *buffer, int len) {
   srand(time(NULL));
 
   // select random dns server
-  in_addr_t remote_dns = inet_addr(dns_servers[rand() % (NUM_DNS - 1)]);
+  in_addr_t remote_dns;
+  if (NUM_DNS == 1) {
+    remote_dns = inet_addr(dns_servers[0]);
+  } else {
+    remote_dns = inet_addr(dns_servers[rand() % (NUM_DNS - 1)]);
+  }
   memcpy(tmp, "\x05\x01\x00\x01", 4);
   memcpy(tmp + 4, &remote_dns, 4);
   memcpy(tmp + 8, "\x00\x35", 2);
@@ -209,19 +222,22 @@ int udp_listener() {
   if(bind(sock, (struct sockaddr*)&dns_listener, sizeof(dns_listener)) < 0)
     error("[!] Error binding on dns proxy");
 
-  FILE *resolv = fopen("/etc/resolv.conf", "w");
+  if (REWRITE_RESOLVCONF) {
+    FILE *resolv = fopen("/etc/resolv.conf", "w");
 
-  if (!resolv)
-    error("[!] Error opening /etc/resolv.conf");
+    if (!resolv)
+      error("[!] Error opening /etc/resolv.conf");
 
-  fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
-  fclose(resolv);
+    fprintf(resolv, "nameserver %s\n", LISTEN_ADDR);
+    fclose(resolv);
+  }
 
   if (strcmp(LOGFILE, "/dev/null") != 0) {
     LOG      = 1;
     LOG_FILE = fopen(LOGFILE, "a+");
     if (!LOG_FILE)
       error("[!] Error opening logfile.");
+    setvbuf(LOG_FILE, NULL, _IOLBF, 1024);
   }
 
   printf("[*] No errors, backgrounding process.\n");
@@ -240,9 +256,11 @@ int udp_listener() {
   reaper.sa_handler = reaper_handle;
   sigaction(SIGCHLD, &reaper, 0);
 
+  fprintf(LOG_FILE, "Starting up...\n");
   while(1) {
     // receive a dns request from the client
     len = recvfrom(sock, buffer->buffer, 2048, 0, (struct sockaddr *)&dns_client, &dns_client_size);
+
 
     // lets not fork if recvfrom was interrupted
     if (len < 0 && errno == EINTR) { continue; }
