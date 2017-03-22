@@ -146,6 +146,9 @@ void parse_resolv_conf() {
 
 // handle children
 void reaper_handle (int sig) {
+  // use sig as a source for an assignment to circunvent an unused parameter warning
+  // add 1 to sig in the assignment to circunvent a self assign warning
+  sig = sig + 1;
   while (waitpid(-1, NULL, WNOHANG) > 0) { };
 }
 
