@@ -1,7 +1,13 @@
-FLAGS=-Wall -Wextra
-all:
-	gcc $(FLAGS) -o dns_proxy dns_proxy.c
-.PHONY : clean
+.PHONY : all clean
+
+CFLAGS ?= -Wall -Wextra
+
+daemon_name = dns_proxy
+
+all: $(daemon_name)
+
+$(daemon_name): $(daemon_name).c
+
 clean :
-	-rm dns_proxy
+	-rm -f $(daemon_name)
 
